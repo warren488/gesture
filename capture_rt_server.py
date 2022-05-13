@@ -2,6 +2,21 @@ import sensors
 import time
 from filters import HighPassFilter, LowPassFilter
 from capture_lib import getAreaUnderGraph
+import socketio
+# create a Socket.IO server
+sio = socketio.Server()
+# wrap with a WSGI application
+app = socketio.WSGIApp(sio, static_files={
+    '/': './client/'
+})
+
+@sio.event
+def connect(sid, environ):
+    print('connect ', sid)
+
+@sio.event
+def disconnect(sid):
+    print('disconnect ', sid)
 
 start = 0
 sensed = 0
@@ -32,9 +47,10 @@ def senseGesture(ready, level, start, count, sensed, velocity, distance):
         # print(distance)
         if(distance > 0.01):
             sensed = 1
-            # print("swipe detected")
+            sio.emit('command', {'command': 'swipe-right',})
         if(distance < -0.01):
             sensed = 1
+            sio.emit('command', {'command': 'swipe-left',})
             # print("swipe detected")
         return velocity, distance, ready, start, sensed
     # button finally released, reset and get ready for another press 
@@ -60,42 +76,48 @@ HIGH_FILTER_TIME_CONSTANT=.5
 LOW_FILTER_TIME_CONSTANT=.5
 highFilter=HighPassFilter.make_from_time_constant(HIGH_FILTER_TIME_CONSTANT,0.1)
 lowFilter=LowPassFilter.make_from_time_constant(LOW_FILTER_TIME_CONSTANT,0.01)
-while True:
-    t = time.time()
-    # acceleration in x,y,z axes
-    ax,ay,az=sensors.accel.get_xyz() 
-    # magnitude of acceleration
-    am = sensors.accel.get_magnitude() 
-    # rotation around x,y,z axes
-    gx,gy,gz=sensors.gyro.get_xyz() 
-    # magnitude of rotation
-    gm = sensors.gyro.get_magnitude()
-
-    ax = ax * 9.81
-    ay = ay * 9.81
-    # subtracting 9.81 here is with the assertion that under operation the z axis 
-    # will be perpendicular to g, so we want to filter it out
-    az = (az * 9.81) - 9.81
-
-    # ----------------------- FILTER CODE ---------------------------------------
-    axt = ax
-    a_high=highFilter.on_value(axt)
-    a_low=lowFilter.on_value(axt)
-    high_low=lowFilter.on_value(a_high)
-    low_high=highFilter.on_value(a_low)
-    print(axt,a_low,a_high,high_low,low_high, sep=',')
-    # ----------------------- END FILTER CODE ---------------------------------------
 
 
-    # this check is to simply make sure we only start running after we have some values to use in our calculations
-    if(tp != 0):
-        velocity, distance, ready, start, sensed = senseGesture(ready, sensors.button.get_level(), start, ax, sensed, velocity, distance)
-        # print(time.time(),a_fil,ay,az,am,gx,gy,gz,gm,velocity,distance, sensors.button.get_level(), sep = ',')
-    # store these for the next loop so we can calculate the change in velocity
-    axp = ax
-    ayp = ay
-    azp = az
-    tp = t
-    velocityp = velocity
-    distancep = distance
-    # time.sleep(.1)
+# wait for the talk event and then start sensing
+@sio.event
+def talk(sid):
+    print('talk ', sid)
+    while True:
+        t = time.time()
+        # acceleration in x,y,z axes
+        ax,ay,az=sensors.accel.get_xyz() 
+        # magnitude of acceleration
+        am = sensors.accel.get_magnitude() 
+        # rotation around x,y,z axes
+        gx,gy,gz=sensors.gyro.get_xyz() 
+        # magnitude of rotation
+        gm = sensors.gyro.get_magnitude()
+
+        ax = ax * 9.81
+        ay = ay * 9.81
+        # subtracting 9.81 here is with the assertion that under operation the z axis 
+        # will be perpendicular to g, so we want to filter it out
+        az = (az * 9.81) - 9.81
+
+        # ----------------------- FILTER CODE ---------------------------------------
+        axt = ax
+        a_high=highFilter.on_value(axt)
+        a_low=lowFilter.on_value(axt)
+        high_low=lowFilter.on_value(a_high)
+        low_high=highFilter.on_value(a_low)
+        print(axt,a_low,a_high,high_low,low_high, sep=',')
+        # ----------------------- END FILTER CODE ---------------------------------------
+
+
+        # this check is to simply make sure we only start running after we have some values to use in our calculations
+        if(tp != 0):
+            velocity, distance, ready, start, sensed = senseGesture(ready, sensors.button.get_level(), start, ax, sensed, velocity, distance)
+            # print(time.time(),a_fil,ay,az,am,gx,gy,gz,gm,velocity,distance, sensors.button.get_level(), sep = ',')
+        # store these for the next loop so we can calculate the change in velocity
+        axp = ax
+        ayp = ay
+        azp = az
+        tp = t
+        velocityp = velocity
+        distancep = distance
+        # time.sleep(.1)
