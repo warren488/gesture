@@ -31,9 +31,7 @@
   }
 
   socket.on('data', data => {
-    if(data.time > bucket.ready[bucket.ready.length -1]){
-      bucket.ready.push(data)
-    }
+    bucket.ready = [...bucket.ready, ...data.map(el => ({x: el[0], y: el[1]}))]
   })
   socket.on('connect', () => {
     socket.emit('talk')
@@ -71,10 +69,7 @@ const chart = new Chart(ctx, {
           onRefresh(chart){
             chart.data.datasets.forEach(dataset => {
               let ts = Date.now()
-              dataset.data.push({
-                x: ts,
-                y: Math.cos(ts)
-              })
+              dataset.data.push(bucket.ready)
             })
           },
           duration: 20000,

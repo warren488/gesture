@@ -82,7 +82,15 @@ lowFilter=LowPassFilter.make_from_time_constant(LOW_FILTER_TIME_CONSTANT,0.01)
 @sio.event
 def talk(sid):
     print('talk ', sid)
+    data = []
+    # we want to send data every 60 cycles
+    frequency = 60
+    cycle_number = 0
     while True:
+        if(cycle_number == frequency): 
+            sio.emit('data', data)
+            data = []
+        cycle_number = cycle_number + 1
         t = time.time()
         # acceleration in x,y,z axes
         ax,ay,az=sensors.accel.get_xyz() 
@@ -112,7 +120,8 @@ def talk(sid):
         # this check is to simply make sure we only start running after we have some values to use in our calculations
         if(tp != 0):
             velocity, distance, ready, start, sensed = senseGesture(ready, sensors.button.get_level(), start, ax, sensed, velocity, distance)
-            # print(time.time(),a_fil,ay,az,am,gx,gy,gz,gm,velocity,distance, sensors.button.get_level(), sep = ',')
+            # print(time.time(),a_high,ay,az,am,gx,gy,gz,gm,velocity,distance, sensors.button.get_level(), sep = ',')
+            data.append([time.time(),a_high,a_low,ay,az,am,gx,gy,gz,gm,velocity,distance, sensors.button.get_level()])
         # store these for the next loop so we can calculate the change in velocity
         axp = ax
         ayp = ay
