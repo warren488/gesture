@@ -1,7 +1,7 @@
 import sensors
 import time
 from filters import HighPassFilter, LowPassFilter
-from capture_lib import getAreaUnderGraph, getXIntercept
+from capture_lib import getAreaUnderGraph
 
 start = 0
 sensed = 0
@@ -70,6 +70,12 @@ while True:
     gx,gy,gz=sensors.gyro.get_xyz() 
     # magnitude of rotation
     gm = sensors.gyro.get_magnitude()
+
+    ax = ax * 9.81
+    ay = ay * 9.81
+    # subtracting 9.81 here is with the assertion that under operation the z axis 
+    # will be perpendicular to g, so we want to filter it out
+    az = (az * 9.81) - 9.81
 
     # ----------------------- FILTER CODE ---------------------------------------
     axt = ax
