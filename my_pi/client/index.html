@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    .chart {
+      max-height: 100vh;
+      max-width: 100vw;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas class="chart" id="myChart" width="400" height="400"></canvas>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.3.2"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@1.27.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.0.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming@2.0.0"></script>
+
+<script type="module">
+  import { io } from "https://cdn.socket.io/4.4.1/socket.io.esm.min.js";
+  const socket = io();
+  const bucket = {
+    ready: [],
+    notReady: []
+  }
+
+  socket.on('data', data => {
+    if(data.time > bucket.ready[bucket.ready.length -1]){
+      bucket.ready.push(data)
+    }
+  })
+  socket.on('connect', () => {
+    socket.emit('talk')
+    console.log('sds')
+  })
+  const ctx = document.getElementById('myChart').getContext('2d');
+  Chart.defaults.set('plugins.streaming', {
+    duration: 20000
+  });
+
+const data = {
+  datasets: [{
+    label: 'My First Dataset',
+    fill: false,
+    borderColor: 'rgb(75, 192, 192)',
+    tension: 0.1
+  }]
+};
+
+const chart = new Chart(ctx, {
+  type: 'line',
+  data,
+  options: {
+    plugins: {
+      // Change options for ALL axes of THIS CHART
+      streaming: {
+        duration: 20000
+      }
+    },
+    scales: {
+      x: {
+        type: 'realtime',
+        // Change options only for THIS AXIS
+        realtime: {
+          onRefresh(chart){
+            chart.data.datasets.forEach(dataset => {
+              let ts = Date.now()
+              dataset.data.push({
+                x: ts,
+                y: Math.cos(ts)
+              })
+            })
+          },
+          duration: 20000,
+          refresh: 50
+        },
+      }
+    }
+  }
+})
+</script>
+
+</html>
